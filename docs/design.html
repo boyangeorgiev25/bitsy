@@ -1,0 +1,600 @@
+<title>Bitsy Pixel Pet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#121110; --panel:#1b1a18; --panel2:#24221f; --line:#2f2c29; --grid:rgba(255,255,255,.035);
+  --text:#efe9e3; --muted:#978f86; --dim:#625b55; --accent:#D97757;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Figtree,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;height:auto}
+.wrap{max-width:1120px;margin:0 auto;padding-block:28px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+header.top{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+header.top canvas{width:64px}
+h1{margin:0;font:700 30px/1 Silkscreen,monospace}
+h1 [contenteditable]{outline:none;border-bottom:2px dashed transparent;padding:0 2px}
+h1 [contenteditable]:hover,h1 [contenteditable]:focus{border-color:#4a443e}
+.sub{color:var(--muted);margin:6px 0 0;font-size:14px}
+.tag{margin-left:auto;font:12px Silkscreen,monospace;color:var(--muted);border:1px solid var(--line);padding:6px 10px;border-radius:999px;white-space:nowrap}
+
+.hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+.stage{position:relative;border:1px solid var(--line);border-radius:18px;display:grid;place-items:center;padding:24px;min-height:420px;overflow:hidden;
+  background-color:var(--panel);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:20px 20px}
+.stage canvas{width:340px;max-width:100%;cursor:pointer}
+.hint{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:var(--dim);font:11px Silkscreen,monospace}
+.side{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px}
+.eyebrow{font:11px Silkscreen,monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+h2{font:700 30px/1.1 Silkscreen,monospace;margin:8px 0 6px;color:var(--accent)}
+#animDesc{color:var(--muted);margin:0;min-height:46px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 26px}
+.chip{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:6px 11px;border-radius:999px;font:500 13px Figtree,sans-serif;cursor:pointer;transition:background .15s,border-color .15s}
+.chip:hover{border-color:#4a443e}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#1a0f0a}
+.swatches{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.sw{width:36px;height:36px;border-radius:10px;border:2px solid transparent;cursor:pointer;box-shadow:inset 0 -7px 0 rgba(0,0,0,.2),0 0 0 1px rgba(255,255,255,.06);padding:0}
+.sw.on{border-color:var(--text)}
+
+section{margin-top:46px}
+h3{font:700 15px Silkscreen,monospace;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin:0 0 16px;max-width:680px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px;cursor:pointer;transition:border-color .15s,transform .15s}
+.card:hover{border-color:#4a443e;transform:translateY(-2px)}
+.card.on{border-color:var(--accent)}
+.card canvas{width:128px;margin:0 auto}
+.card b{display:block;font:700 12px Silkscreen,monospace;margin-top:4px;text-transform:uppercase}
+.card span{display:block;color:var(--muted);font-size:12.5px;line-height:1.35;margin-top:2px}
+
+.desk{position:relative;height:460px;border-radius:18px;overflow:hidden;border:1px solid var(--line);user-select:none;-webkit-user-select:none;
+  background:radial-gradient(900px 420px at 15% 0%,#2c2521 0%,transparent 60%),radial-gradient(800px 460px at 100% 100%,#1c2230 0%,transparent 60%),#161514}
+.menubar{height:26px;display:flex;align-items:center;gap:16px;padding:0 14px;font:500 12px Figtree,sans-serif;color:#cfc8c0;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.05)}
+.menubar .dot{width:10px;height:10px;border-radius:3px;background:var(--accent)}
+.menubar .clock{margin-left:auto;font-variant-numeric:tabular-nums}
+.win{position:absolute;left:7%;top:62px;width:min(46%,420px);height:190px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);padding:30px 18px 0}
+.win::before{content:"";position:absolute;left:12px;top:11px;width:44px;height:8px;background:radial-gradient(circle,#4a4440 3.5px,transparent 4px) 0 0/15px 8px repeat-x}
+.win i{display:block;height:7px;border-radius:4px;background:rgba(255,255,255,.06);margin:10px 0}
+.dock{position:absolute;left:16px;right:16px;bottom:16px;height:56px;border-radius:18px;background:#2a2928;border:1px solid #3a3836;display:flex;align-items:center;padding:0 18px;color:#7f786f;font-size:14px}
+.dock svg{margin-left:auto}
+#pet{position:absolute;width:96px;cursor:grab;touch-action:none;z-index:3}
+#pet.drag{cursor:grabbing}
+.deskhint{position:absolute;right:18px;top:40px;font:11px Silkscreen,monospace;color:#6d665f;text-align:right;line-height:1.7}
+
+.panel{position:absolute;left:0;bottom:0;width:264px;z-index:4;background:#1f1d1b;border:1px solid #3d3833;border-radius:14px;padding:14px;box-shadow:0 18px 44px rgba(0,0,0,.5);
+  opacity:0;transform:translateY(8px) scale(.96);transform-origin:50% 100%;pointer-events:none;transition:opacity .16s,transform .16s}
+.panel.open{opacity:1;transform:none;pointer-events:auto}
+.panel .arrow{position:absolute;bottom:-7px;width:12px;height:12px;background:#1f1d1b;border-right:1px solid #3d3833;border-bottom:1px solid #3d3833;transform:rotate(45deg);margin-left:-6px}
+.ph{display:flex;align-items:center;gap:8px}
+.ph b{font:700 15px Silkscreen,monospace;color:var(--accent)}
+.lvl{font:10px Silkscreen,monospace;color:#1a0f0a;background:var(--accent);padding:2px 6px;border-radius:5px}
+.x{margin-left:auto;appearance:none;background:none;border:0;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:2px 4px}
+.doing{color:var(--muted);font-size:12.5px;margin:2px 0 12px}
+.bar{display:grid;grid-template-columns:52px 1fr 28px;align-items:center;gap:8px;font-size:12px;color:#cfc8c0;margin:6px 0}
+.track{height:8px;background:#2d2a27;border-radius:2px;overflow:hidden}
+.track i{display:block;height:100%;background:var(--accent);transition:width .3s;
+  background-image:linear-gradient(90deg,transparent 50%,rgba(0,0,0,.18) 50%);background-size:8px 100%}
+.track.en i{background-color:#7BC67E}
+.bar span{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}
+.nums div{background:#262421;border-radius:8px;padding:7px 4px;text-align:center}
+.nums b{display:block;font:700 14px Figtree,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.nums span{font-size:10.5px;color:var(--muted)}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.acts button{appearance:none;border:1px solid #3a3632;background:#292724;color:var(--text);font:500 12px Figtree,sans-serif;padding:6px 0;border-radius:8px;cursor:pointer}
+.acts button:hover{border-color:var(--accent);color:var(--accent)}
+
+.spec{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+.tokens{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.tok i{display:block;height:44px;border-radius:9px;box-shadow:0 0 0 1px rgba(255,255,255,.07)}
+.tok b{display:block;font-size:12.5px;margin-top:6px}
+.tok code{font-size:11.5px;color:var(--muted)}
+.facts{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.facts li{display:flex;gap:12px;align-items:baseline;color:var(--muted);font-size:14px}
+.facts b{font:700 13px Silkscreen,monospace;color:var(--text);min-width:92px}
+
+@media (max-width:820px){
+  .hero,.spec{grid-template-columns:minmax(0,1fr)}
+  .stage{min-height:340px}
+  .tag{display:none}
+  .win,.deskhint{display:none}
+}
+</style>
+<div class="wrap">
+
+<header class="top">
+  <canvas id="logo"></canvas>
+  <div>
+    <h1><span id="petName" contenteditable="true" spellcheck="false">Bitsy</span></h1>
+    <p class="sub">Pixel desktop buddy · character &amp; animation sheet (click the name to rename)</p>
+  </div>
+  <div class="tag">v0.1 · design</div>
+</header>
+
+<div class="hero">
+  <div class="stage"><canvas id="hero"></canvas><div class="hint">click me</div></div>
+  <div class="side">
+    <div class="eyebrow">Now playing</div>
+    <h2 id="animTitle">Idle</h2>
+    <p id="animDesc"></p>
+    <div class="chips" id="chips"></div>
+    <div class="eyebrow">Colorway</div>
+    <div class="swatches" id="swatches"></div>
+  </div>
+</div>
+
+<section>
+  <h3>Animation set</h3>
+  <p class="lead">Twelve states, all drawn from one 32×32 pixel rig: a body, four legs, two arm nubs, and swappable eyes. Click any card to play it big.</p>
+  <div class="grid" id="grid"></div>
+</section>
+
+<section>
+  <h3>On your desktop</h3>
+  <p class="lead">This is roughly how it'll act on your screen. It wanders along the bar, naps when its energy runs out, and sometimes starts coding or dancing. <b>Click it</b> to see stats. <b>Drag it</b> to pick it up and drop it.</p>
+  <div class="desk" id="desk">
+    <div class="menubar"><span class="dot"></span><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><span class="clock" id="clock"></span></div>
+    <div class="win"><i style="width:62%"></i><i style="width:84%"></i><i style="width:48%"></i><i style="width:72%"></i><i style="width:36%"></i></div>
+    <div class="deskhint">click → stats<br>drag → pick up</div>
+    <canvas id="pet"></canvas>
+    <div class="panel" id="panel">
+      <div class="ph"><b id="pName">Bitsy</b><span class="lvl" id="pLvl">LV 1</span><button class="x" id="pClose" aria-label="Close">×</button></div>
+      <div class="doing" id="pDoing">chilling</div>
+      <div class="bar"><label>Mood</label><div class="track"><i id="bMood"></i></div><span id="vMood"></span></div>
+      <div class="bar"><label>Energy</label><div class="track en"><i id="bEnergy"></i></div><span id="vEnergy"></span></div>
+      <div class="nums">
+        <div><b id="nSteps">0</b><span>steps</span></div>
+        <div><b id="nPets">0</b><span>pets</span></div>
+        <div><b id="nNaps">0</b><span>naps</span></div>
+        <div><b id="nUp">0s</b><span>awake</span></div>
+      </div>
+      <div class="acts"><button data-a="love">Pet</button><button data-a="sleep">Nap</button><button data-a="dance">Dance</button><button data-a="work">Code</button></div>
+      <i class="arrow" id="pArrow"></i>
+    </div>
+    <div class="dock"><span>Ask anything…</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cfc8c0" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>Design spec</h3>
+  <p class="lead">The palette updates live when you switch colorways.</p>
+  <div class="spec">
+    <div class="box"><div class="tokens" id="tokens"></div></div>
+    <div class="box">
+      <ul class="facts">
+        <li><b>Grid</b>32×32 logical px, drawn at integer scales (×3 on desktop, ×10 hero)</li>
+        <li><b>Rig</b>18×11 body, 4 legs (2px), 2 arm nubs, 7 eye states, mouth</li>
+        <li><b>Timing</b>Walk 8 fps, run 14 fps, idle blink every ~3s</li>
+        <li><b>Physics</b>Squash on crouch &amp; land, stretch on take-off, gravity on drop</li>
+        <li><b>Brain</b>Weighted random states; energy drains while walking, naps refill it</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ---------- palette ----------
+const INK = '#1B1512', SHINE = '#F7EFE6', Z4 = [0, 0, 0, 0];
+const PALETTES = {
+  clay:  { name: 'Clay',  body: '#D97757', shade: '#B35D40', light: '#EB9A7F', blush: '#E8604E' },
+  mint:  { name: 'Mint',  body: '#5BBE97', shade: '#3E9875', light: '#8AD8B8', blush: '#E8796F' },
+  ocean: { name: 'Ocean', body: '#5D8EEA', shade: '#4069C2', light: '#8DB0F3', blush: '#E5799B' },
+  grape: { name: 'Grape', body: '#9A7AE6', shade: '#7657C2', light: '#BBA2F1', blush: '#EC7BA9' },
+  ghost: { name: 'Ghost', body: '#DCD6CD', shade: '#ADA498', light: '#F4F0EA', blush: '#EE9A88' },
+};
+let pal = PALETTES.clay;
+
+// ---------- glyphs (particles / props) ----------
+const G = {
+  z: ['1111', '0010', '0100', '1111'],
+  Z: ['11111', '00010', '00100', '01000', '11111'],
+  heart: ['11011', '11111', '11111', '01110', '00100'],
+  note: ['0111', '0101', '0100', '1100', '1100'],
+  bang: ['11', '11', '11', '11', '00', '11'],
+  q: ['0110', '1001', '0001', '0010', '0000', '0010'],
+  spark: ['010', '111', '010'],
+  drop: ['010', '111', '111'],
+  dust: ['11', '11'],
+  lt: ['01', '10', '01'], gt: ['10', '01', '10'], sl: ['01', '01', '10'],
+};
+function drawGlyph(ctx, S, f) {
+  const g = G[f.g];
+  ctx.globalAlpha = f.a == null ? 1 : Math.max(0, Math.min(1, f.a));
+  ctx.fillStyle = f.c;
+  const x = Math.round(f.x), y = Math.round(f.y);
+  g.forEach((row, j) => { for (let i = 0; i < row.length; i++) if (row[i] === '1') ctx.fillRect((x + i) * S, (y + j) * S, S, S); });
+  ctx.globalAlpha = 1;
+}
+
+// ---------- the rig ----------
+// pose: dx, dy, air, squash(+1 squash / -1 stretch), top, legs[lift], feet[xoff], legLen, dangle,
+//       eyes, look, lookY, armL, armR, armOff, blush, mouth, laptop, noShadow
+function drawPet(ctx, S, p) {
+  const r = (x, y, w, h, c) => { if (w <= 0 || h <= 0) return; ctx.fillStyle = c; ctx.fillRect(x * S, y * S, w * S, h * S); };
+  const dx = p.dx | 0, air = p.air | 0, s = p.squash | 0, dy = p.dy | 0;
+  const x0 = 7 - s + dx, x1 = 24 + s + dx;
+  const y1 = 22 + dy - air, y0 = 12 + 2 * s + dy + (p.top | 0) - air;
+
+  if (!p.noShadow) { const k = Math.min(4, air >> 1); r(9 + k + dx, 28, 14 - 2 * k, 1, 'rgba(0,0,0,.32)'); }
+
+  // legs
+  const L = p.legs || Z4, F = p.feet || Z4, hang = air > 0 || p.dangle;
+  [8, 12, 18, 22].forEach((lx, i) => {
+    lx += dx;
+    const top = y1 + 1, bot = hang ? top + (p.legLen || 4) - 1 - L[i] : 27 - L[i];
+    for (let y = top; y <= bot; y++) {
+      const o = (F[i] && y >= bot - 1) ? F[i] : 0;
+      r(lx + o, y, 1, 1, pal.body); r(lx + o + 1, y, 1, 1, pal.shade);
+    }
+  });
+
+  // body
+  r(x0, y0, x1 - x0 + 1, y1 - y0 + 1, pal.body);
+  r(x0 + 1, y0, x1 - x0 - 1, 1, pal.light);
+  r(x1, y0 + 1, 1, y1 - y0, pal.shade);
+  r(x0, y1, x1 - x0, 1, pal.shade);
+
+  // arm nubs
+  const arm = (side, pose = 'side', off = 0) => {
+    if (pose === 'hide') return;
+    let w = 2, h = 3, ax = side < 0 ? x0 - 2 : x1 + 1, ay = y0 + 3 + off;
+    if (pose === 'up') ay = y0 - 2 + off;
+    else if (pose === 'up2') { ay = y0 - 3 + off; ax += side; }
+    else if (pose === 'down') ay = y0 + 5;
+    else if (pose === 'out') { w = 3; h = 2; ax = side < 0 ? x0 - 3 : x1 + 1; ay = y0 + 4 + off; }
+    else if (pose === 'type') { ax = side < 0 ? x0 + 1 : x1 - 2; ay = y1 + 1 + off; r(ax, ay, 2, 1, pal.light); r(ax, ay + 1, 2, 1, pal.body); return; }
+    r(ax, ay, w, h, pal.body); r(ax, ay + h - 1, w, 1, pal.shade);
+  };
+  const ao = p.armOff || [0, 0];
+  if (!p.laptop) { arm(-1, p.armL, ao[0]); arm(1, p.armR, ao[1]); }
+
+  // eyes
+  const ey = y0 + 2 + (p.lookY | 0), lk = p.look | 0, E = p.eyes || 'open';
+  [11, 19].forEach((ex, i) => {
+    ex += dx + lk;
+    if (E === 'open') { r(ex, ey, 2, 4, INK); r(ex + 1, ey, 1, 1, SHINE); }
+    else if (E === 'blink') r(ex, ey + 2, 2, 1, INK);
+    else if (E === 'focus') { r(ex, ey + 1, 2, 3, INK); r(ex + 1, ey + 1, 1, 1, SHINE); }
+    else if (E === 'wide') { const x = i ? ex : ex - 1; r(x, ey - 1, 3, 5, INK); r(x + 2, ey - 1, 1, 2, SHINE); }
+    else if (E === 'happy') { r(ex - 1, ey + 2, 1, 1, INK); r(ex, ey + 1, 2, 1, INK); r(ex + 2, ey + 2, 1, 1, INK); }
+    else if (E === 'closed') { r(ex - 1, ey + 2, 1, 1, INK); r(ex, ey + 3, 2, 1, INK); r(ex + 2, ey + 2, 1, 1, INK); }
+    else if (E === 'squint') {
+      if (!i) { r(ex, ey + 1, 1, 1, INK); r(ex + 1, ey + 2, 1, 1, INK); r(ex, ey + 3, 1, 1, INK); }
+      else { r(ex + 1, ey + 1, 1, 1, INK); r(ex, ey + 2, 1, 1, INK); r(ex + 1, ey + 3, 1, 1, INK); }
+    }
+  });
+
+  // mouth
+  if (p.mouth === 'o') r(15 + dx, y0 + 7, 2, 2, INK);
+  else if (p.mouth === 'smile') { r(14 + dx, y0 + 7, 1, 1, INK); r(15 + dx, y0 + 8, 2, 1, INK); r(17 + dx, y0 + 7, 1, 1, INK); }
+
+  // tiny laptop
+  if (p.laptop) {
+    r(9 + dx, y1 - 3, 14, 6, '#2B2A2F'); r(9 + dx, y1 - 3, 14, 1, '#4A4950'); r(15 + dx, y1 - 1, 2, 2, pal.light);
+    r(6 + dx, y1 + 3, 20, 1, '#C4C3CA'); r(6 + dx, y1 + 4, 20, 1, '#85848C');
+    arm(-1, 'type', ao[0]); arm(1, 'type', ao[1]);
+  }
+}
+
+// ---------- animations ----------
+const step = (t, fps, n) => Math.floor(t * fps) % n;
+const blink = t => (t % 3.3) < 0.12 || ((t + 1.7) % 5.9) < 0.1;
+const fade = ph => ph < 0.15 ? ph / 0.15 : ph > 0.7 ? (1 - ph) / 0.3 : 1;
+const rise = (t, period, n, make) => Array.from({ length: n }, (_, i) => make(((t / period) + i / n) % 1, i));
+
+const ANIMS = {
+  idle: { label: 'Idle', desc: 'Breathes, blinks, glances around.', f: t => ({
+    pose: { dy: (t % 2) < 1 ? 0 : -1, eyes: blink(t) ? 'blink' : 'open', look: [0, 0, 0, 1, 1, 0, 0, -1, -1, 0][step(t, 1.4, 10)] } }) },
+
+  walk: { label: 'Walk', desc: 'Four-beat waddle at 8 fps with arm swing.', scroll: 8, f: (t, dir = 1) => {
+    const fr = step(t, 8, 4), A = fr === 0, B = fr === 2;
+    return { pose: { dy: A || B ? -1 : 0, legs: [A, B, A, B].map(v => v ? 1 : 0), feet: [A, B, A, B].map(v => v ? dir : 0),
+      look: dir, eyes: blink(t) ? 'blink' : 'open', armOff: [A ? -1 : B ? 1 : 0, A ? 1 : B ? -1 : 0] } };
+  } },
+
+  run: { label: 'Run', desc: 'Zoomies. Big strides, arms out, kicks up dust.', scroll: 26, f: (t, dir = 1) => {
+    const fr = step(t, 14, 4), A = fr === 0, B = fr === 2;
+    return { pose: { dy: A || B ? -1 : 0, legs: [A, B, A, B].map(v => v ? 2 : 0), feet: [A, B, A, B].map(v => v ? dir : 0),
+      look: dir, eyes: 'focus', armL: 'out', armR: 'out', armOff: [A ? -1 : 0, B ? -1 : 0] },
+      fx: rise(t, 0.45, 3, ph => ({ g: 'dust', x: dir > 0 ? 6 - ph * 5 : 24 + ph * 5, y: 26 - ph * 3, c: '#A89F95', a: 0.9 - ph })) };
+  } },
+
+  jump: { label: 'Jump', desc: 'Crouch, stretch, hang time, squash on landing.', f: t => {
+    const c = t % 1.7;
+    if (c < 0.2) return { pose: { squash: 1, dy: 1, eyes: 'squint', armL: 'down', armR: 'down' } };
+    if (c < 0.85) {
+      const u = (c - 0.2) / 0.65, air = Math.round(Math.sin(u * Math.PI) * 10);
+      return { pose: { air, squash: u < 0.25 ? -1 : 0, eyes: 'happy', armL: 'up', armR: 'up', legs: u < 0.5 ? [1, 1, 1, 1] : Z4 },
+        fx: u > 0.3 && u < 0.7 ? [{ g: 'spark', x: 3, y: 12 - air, c: '#FFE08A' }, { g: 'spark', x: 27, y: 9 - air, c: '#FFE08A' }] : [] };
+    }
+    if (c < 1.0) return { pose: { squash: 1, dy: 1, eyes: 'happy', armL: 'out', armR: 'out' } };
+    return { pose: { eyes: 'open' } };
+  } },
+
+  wave: { label: 'Wave', desc: 'Says hi with a little nub wiggle.', f: t => {
+    const w = step(t, 6, 2);
+    return { pose: { eyes: (t % 2.4) < 1.8 ? 'happy' : 'open', armR: w ? 'up2' : 'up', mouth: 'smile' },
+      fx: [{ g: 'spark', x: w ? 29 : 28, y: w ? 5 : 6, c: '#FFE08A', a: 0.9 }] };
+  } },
+
+  love: { label: 'Petted', desc: 'Happy bounce and floating hearts when you pet it.', f: t => {
+    const b = (t % 0.5) < 0.25;
+    return { pose: { dy: b ? -1 : 0, eyes: 'happy', blush: 'big', mouth: 'smile' },
+      fx: rise(t, 1.8, 3, (ph, i) => ({ g: 'heart', x: [2, 14, 25][i] + Math.round(Math.sin(ph * 6 + i)), y: 10 - ph * 10, c: '#FF6B81', a: fade(ph) })) };
+  } },
+
+  surprised: { label: 'Surprised', desc: 'Startled hop when you click it.', f: t => {
+    const c = t % 2.4;
+    if (c < 0.1) return { pose: { eyes: 'open' } };
+    if (c < 0.5) {
+      const u = (c - 0.1) / 0.4, air = Math.round(Math.sin(u * Math.PI) * 4);
+      return { pose: { air, eyes: 'wide', mouth: 'o', armL: 'up', armR: 'up' }, fx: [{ g: 'bang', x: 15, y: 4 - air, c: '#FF5A5F' }] };
+    }
+    return { pose: { eyes: c > 1.8 && blink(t) ? 'blink' : 'wide', mouth: c < 1.4 ? 'o' : null, armL: c < 1 ? 'up' : 'side', armR: c < 1 ? 'up' : 'side' },
+      fx: c < 1.3 ? [{ g: 'bang', x: 15, y: 4, c: '#FF5A5F' }] : [] };
+  } },
+
+  think: { label: 'Think', desc: 'Looks up, scratches head, taps a foot.', f: t => ({
+    pose: { look: -1, lookY: -1, eyes: blink(t) ? 'blink' : 'open', armR: step(t, 3, 2) ? 'up' : 'up2', legs: [0, 0, 0, step(t, 4, 2)] },
+    fx: [{ g: 'q', x: 3, y: 3 + ((t % 1.2) < 0.6 ? 0 : 1), c: '#E8E2DA' }] }) },
+
+  work: { label: 'Code', desc: 'Types furiously on a tiny laptop.', f: t => {
+    const k = step(t, 10, 2);
+    return { pose: { laptop: true, eyes: blink(t) ? 'blink' : 'focus', lookY: 1, armOff: [k ? -1 : 0, k ? 0 : -1] },
+      fx: rise(t, 1.6, 3, (ph, i) => ({ g: ['lt', 'sl', 'gt'][i], x: [2, 28, 27][i] + Math.round(Math.sin(ph * 5)), y: 20 - ph * 16, c: pal.light, a: fade(ph) })) };
+  } },
+
+  dance: { label: 'Dance', desc: 'Sways, pumps arms, music notes.', f: t => {
+    const b = step(t, 4, 4), up = b < 2;
+    return { pose: { dx: [0, 1, 0, -1][b], dy: b % 2 ? 0 : -1, eyes: 'happy', mouth: 'smile', armL: up ? 'up' : 'side', armR: up ? 'side' : 'up',
+      legs: b === 0 ? [1, 0, 0, 1] : b === 2 ? [0, 1, 1, 0] : Z4 },
+      fx: rise(t, 2.2, 3, (ph, i) => ({ g: 'note', x: (i % 2 ? 26 : 1) + Math.round(Math.sin(ph * 7 + i)), y: 14 - ph * 13, c: i % 2 ? '#F3D36B' : '#8ECDF0', a: fade(ph) })) };
+  } },
+
+  sleep: { label: 'Sleep', desc: 'Sits down and naps when energy runs low.', f: t => ({
+    pose: { dy: 4, top: (t % 2.4) < 1.2 ? 0 : 1, eyes: 'closed', armL: 'down', armR: 'down' },
+    fx: rise(t, 2.7, 3, (ph, i) => ({ g: i % 2 ? 'z' : 'Z', x: 21 + ph * 5, y: 13 - ph * 12, c: '#D9D1C7', a: fade(ph) })) }) },
+
+  dangle: { label: 'Picked up', desc: 'Legs flail when you drag it with the mouse.', f: t => {
+    const sw = Math.round(Math.sin(t * 9));
+    return { pose: { dangle: true, squash: -1, dy: -3, legLen: 5, feet: [sw, -sw, sw, -sw], eyes: 'squint', armL: 'up', armR: 'up', noShadow: true },
+      fx: (t % 1) < 0.6 ? [{ g: 'drop', x: 27, y: 9, c: '#7CC6FE' }] : [] };
+  } },
+};
+// engine-only transitions
+const EXTRA = {
+  fall: { f: () => ({ pose: { dangle: true, dy: -3, legLen: 5, eyes: 'wide', mouth: 'o', armL: 'up2', armR: 'up2', noShadow: true } }) },
+  land: { f: () => ({ pose: { squash: 1, dy: 1, eyes: 'squint', armL: 'out', armR: 'out' },
+    fx: [{ g: 'dust', x: 4, y: 25, c: '#A89F95', a: 0.8 }, { g: 'dust', x: 26, y: 25, c: '#A89F95', a: 0.8 }] }) },
+};
+const ORDER = Object.keys(ANIMS);
+
+// ---------- canvas helpers ----------
+const DPR = Math.max(1, Math.round(window.devicePixelRatio || 1));
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function setupCanvas(cv, S) { cv.width = cv.height = 32 * S * DPR; cv.style.width = 32 * S + 'px'; return cv.getContext('2d'); }
+function paint(ctx, S, out, ground) {
+  const k = S * DPR;
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  if (ground != null) {
+    ctx.fillStyle = 'rgba(255,255,255,.10)';
+    const off = Math.floor(((ground % 4) + 4) % 4);
+    for (let x = -4; x < 36; x += 4) ctx.fillRect((x - off) * k, 29 * k, k, k);
+  }
+  drawPet(ctx, k, out.pose);
+  (out.fx || []).forEach(f => drawGlyph(ctx, k, f));
+}
+
+// ---------- hero + chips + cards ----------
+const heroCtx = setupCanvas($('#hero'), 10);
+$('#hero').style.width = '';
+const logoCtx = setupCanvas($('#logo'), 2);
+let heroAnim = 'idle', heroT0 = 0, heroPoke = null;
+
+const chips = $('#chips'), grid = $('#grid');
+const cardCtx = {};
+ORDER.forEach((k, i) => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.textContent = ANIMS[k].label; b.dataset.k = k;
+  b.onclick = () => playHero(k);
+  chips.appendChild(b);
+
+  const c = document.createElement('div');
+  c.className = 'card'; c.dataset.k = k;
+  c.innerHTML = `<canvas></canvas><b>${ANIMS[k].label}</b><span>${ANIMS[k].desc}</span>`;
+  c.onclick = () => { playHero(k); $('.hero').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+  grid.appendChild(c);
+  cardCtx[k] = { ctx: setupCanvas(c.querySelector('canvas'), 4), off: i * 0.37 };
+});
+function playHero(k) {
+  heroAnim = k; heroT0 = performance.now() / 1000; heroPoke = null;
+  $('#animTitle').textContent = ANIMS[k].label;
+  $('#animDesc').textContent = ANIMS[k].desc;
+  document.querySelectorAll('.chip,.card').forEach(el => el.classList.toggle('on', el.dataset.k === k));
+}
+$('#hero').addEventListener('click', () => { heroPoke = performance.now() / 1000; });
+
+// colorways
+const swatches = $('#swatches');
+function setPalette(key) {
+  pal = PALETTES[key];
+  document.documentElement.style.setProperty('--accent', pal.body);
+  swatches.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.k === key));
+  $('#tokens').innerHTML = [['Body', pal.body], ['Shade', pal.shade], ['Highlight', pal.light], ['Ink', INK], ['Shine', SHINE]]
+    .map(([n, c]) => `<div class="tok"><i style="background:${c}"></i><b>${n}</b><code>${c}</code></div>`).join('');
+  try { localStorage.setItem('bitsy.pal', key); } catch (e) {}
+}
+Object.entries(PALETTES).forEach(([k, p]) => {
+  const s = document.createElement('button');
+  s.className = 'sw'; s.dataset.k = k; s.title = p.name; s.style.background = p.body;
+  s.onclick = () => setPalette(k);
+  swatches.appendChild(s);
+});
+
+// name
+const nameEl = $('#petName');
+function syncName() { const n = nameEl.textContent.trim() || 'Bitsy'; $('#pName').textContent = n; try { localStorage.setItem('bitsy.name', n); } catch (e) {} }
+nameEl.addEventListener('input', syncName);
+nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
+
+// ---------- desktop pet brain ----------
+const desk = $('#desk'), petCv = $('#pet'), panel = $('#panel'), arrow = $('#pArrow');
+const petCtx = setupCanvas(petCv, 3);
+const DOCK = 72, PS = 3, FOOT = 28 * PS;   // dock height from bottom, sprite scale, feet line in canvas px
+const W = () => desk.clientWidth, FLOOR = () => desk.clientHeight - DOCK;
+const P = { x: 240, h: 0, vy: 0, dir: 1, state: 'idle', t: 0, dur: 2.5, tx: 0, drag: false, fall: false, open: false,
+  steps: 0, pets: 0, naps: 0, mood: 72, energy: 86, born: performance.now() };
+const DOING = { idle: 'chilling', walk: 'wandering around', run: 'doing zoomies', jump: 'hopping', wave: 'saying hi', love: 'feeling loved',
+  surprised: 'startled!', think: 'pondering life', work: 'shipping code', dance: 'vibing', sleep: 'napping zzz', dangle: 'being carried', fall: 'falling!', land: 'oof' };
+
+function go(s, dur) { P.state = s; P.t = 0; P.dur = dur; if (s === 'sleep') P.naps++; }
+function pickNext() {
+  if (P.open) { const s = ['idle', 'idle', 'wave', 'love'][Math.random() * 4 | 0]; go(s, s === 'idle' ? 2.5 : 2); return; }
+  const e = P.energy;
+  const w = { idle: 3, walk: 5, run: e > 45 ? 1.2 : 0, sleep: e < 30 ? 8 : 0.35, dance: 0.9, wave: 0.7, think: 1, work: 1.3, jump: e > 25 ? 0.9 : 0 };
+  let sum = 0; for (const k in w) sum += w[k];
+  let roll = Math.random() * sum, s = 'idle';
+  for (const k in w) { if ((roll -= w[k]) < 0) { s = k; break; } }
+  if (s === 'walk' || s === 'run') {
+    const lo = 64, hi = W() - 64; let tx, n = 0;
+    do { tx = lo + Math.random() * (hi - lo); } while (Math.abs(tx - P.x) < 90 && ++n < 10);
+    P.tx = tx; P.dir = tx > P.x ? 1 : -1; go(s, 99); return;
+  }
+  const D = { idle: [2, 4], sleep: [7, 12], dance: [3.5, 5], wave: [1.8, 2.2], think: [2.6, 3.6], work: [5, 8], jump: [1.7, 1.7] }[s];
+  go(s, D[0] + Math.random() * (D[1] - D[0]));
+}
+function update(dt) {
+  P.t += dt;
+  P.mood = Math.max(20, P.mood - dt * 0.25);
+  if (P.drag) return;
+  if (P.fall) {
+    P.vy += 2200 * dt; P.h = Math.max(0, P.h - P.vy * dt);
+    if (P.h === 0) { P.fall = false; P.vy = 0; go('land', 0.25); }
+    return;
+  }
+  const st = P.state;
+  if (st === 'walk' || st === 'run') {
+    const sp = st === 'walk' ? 42 : 135, d = P.tx - P.x, mv = Math.sign(d) * Math.min(Math.abs(d), sp * dt);
+    P.x += mv; P.steps += Math.abs(mv) / 3;
+    P.energy = Math.max(0, P.energy - dt * (st === 'walk' ? 0.5 : 2));
+    if (Math.abs(d) < 1) go('idle', 1.5 + Math.random() * 2);
+    return;
+  }
+  P.energy = st === 'sleep' ? Math.min(100, P.energy + dt * 7) : Math.max(0, P.energy - dt * 0.12);
+  if (st === 'land' && P.t >= P.dur) { go('surprised', 1.1); return; }
+  if (P.t >= P.dur) pickNext();
+}
+function renderPet() {
+  const A = ANIMS[P.state] || EXTRA[P.state];
+  const out = A.f(P.t, P.dir);
+  if (P.h > 3) out.pose.noShadow = true;
+  paint(petCtx, PS, out);
+  P.x = clamp(P.x, 56, W() - 56);
+  petCv.style.left = (P.x - 16 * PS) + 'px';
+  petCv.style.top = (FLOOR() - FOOT - P.h) + 'px';
+  if (P.open) placePanel();
+}
+
+// panel
+function openPanel() { P.open = true; panel.classList.add('open'); go('surprised', 0.9); updatePanel(); placePanel(); }
+function closePanel() { P.open = false; panel.classList.remove('open'); }
+function placePanel() {
+  const pw = panel.offsetWidth, left = clamp(P.x - pw / 2, 12, W() - pw - 12);
+  panel.style.left = left + 'px';
+  panel.style.bottom = (DOCK + 16 * PS + 20 + P.h) + 'px';
+  arrow.style.left = clamp(P.x - left, 18, pw - 18) + 'px';
+}
+function fmtUp(ms) { const s = ms / 1000 | 0, m = s / 60 | 0, h = m / 60 | 0; return h ? `${h}h${m % 60}m` : m ? `${m}m${s % 60}s` : `${s}s`; }
+function updatePanel() {
+  $('#pDoing').textContent = 'Currently: ' + (DOING[P.state] || P.state);
+  $('#pLvl').textContent = 'LV ' + (1 + Math.floor(P.steps / 400));
+  $('#bMood').style.width = P.mood + '%'; $('#vMood').textContent = Math.round(P.mood);
+  $('#bEnergy').style.width = P.energy + '%'; $('#vEnergy').textContent = Math.round(P.energy);
+  $('#nSteps').textContent = Math.round(P.steps).toLocaleString();
+  $('#nPets').textContent = P.pets; $('#nNaps').textContent = P.naps;
+  $('#nUp').textContent = fmtUp(performance.now() - P.born);
+}
+$('#pClose').onclick = closePanel;
+panel.querySelectorAll('.acts button').forEach(b => b.onclick = () => {
+  const a = b.dataset.a;
+  if (a === 'love') { P.pets++; P.mood = Math.min(100, P.mood + 10); go('love', 2.5); }
+  if (a === 'sleep') go('sleep', 8);
+  if (a === 'dance') go('dance', 4.5);
+  if (a === 'work') go('work', 6);
+  updatePanel();
+});
+desk.addEventListener('pointerdown', e => { if (P.open && !panel.contains(e.target) && e.target !== petCv) closePanel(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+
+// click vs drag
+let down = null;
+petCv.addEventListener('pointerdown', e => { e.preventDefault(); petCv.setPointerCapture(e.pointerId); down = { x: e.clientX, y: e.clientY }; });
+petCv.addEventListener('pointermove', e => {
+  if (!down) return;
+  if (!P.drag && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) {
+    P.drag = true; P.fall = false; go('dangle', 99); closePanel(); petCv.classList.add('drag');
+  }
+  if (P.drag) {
+    const R = desk.getBoundingClientRect();
+    P.x = clamp(e.clientX - R.left, 56, W() - 56);
+    P.h = clamp(FLOOR() - FOOT - (e.clientY - R.top - 9 * PS), 0, FLOOR() - FOOT - 26);
+  }
+});
+function release() {
+  if (!down) return; down = null;
+  if (P.drag) {
+    P.drag = false; petCv.classList.remove('drag');
+    if (P.h > 0) { P.fall = true; P.vy = 0; go('fall', 99); } else go('land', 0.25);
+  } else {
+    P.pets++; P.mood = Math.min(100, P.mood + 9);
+    P.open ? closePanel() : openPanel();
+  }
+}
+petCv.addEventListener('pointerup', release);
+petCv.addEventListener('pointercancel', release);
+
+// ---------- loop ----------
+let last = performance.now(), panelTick = 0;
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const T = now / 1000;
+
+  // hero
+  if (heroPoke != null && T - heroPoke > 1.4) heroPoke = null;
+  const hk = heroPoke != null ? 'surprised' : heroAnim, ht = heroPoke != null ? T - heroPoke : T - heroT0;
+  paint(heroCtx, 10, ANIMS[hk].f(ht, 1), ANIMS[hk].scroll ? ht * ANIMS[hk].scroll : 0);
+  paint(logoCtx, 2, ANIMS.idle.f(T + 0.8));
+
+  // cards
+  for (const k of ORDER) paint(cardCtx[k].ctx, 4, ANIMS[k].f(T + cardCtx[k].off, 1));
+
+  // desktop
+  update(dt); renderPet();
+  if ((panelTick += dt) > 0.25) { panelTick = 0; if (P.open) updatePanel(); }
+
+  requestAnimationFrame(loop);
+}
+
+// clock
+const tickClock = () => $('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+tickClock(); setInterval(tickClock, 15000);
+
+// restore prefs
+let savedPal = 'clay', savedName = null;
+try { savedPal = localStorage.getItem('bitsy.pal') || 'clay'; savedName = localStorage.getItem('bitsy.name'); } catch (e) {}
+setPalette(PALETTES[savedPal] ? savedPal : 'clay');
+if (savedName) nameEl.textContent = savedName;
+syncName();
+P.x = Math.min(240, W() / 2);
+playHero('idle');
+requestAnimationFrame(loop);
+</script>
