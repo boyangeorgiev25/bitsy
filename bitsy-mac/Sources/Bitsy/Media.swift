@@ -39,6 +39,10 @@ final class MediaMonitor {
 
     var isPlaying: Bool { now?.playing == true }
 
+    /// Demo recordings show a made-up track.
+    func demoSet(_ n: NowPlaying?) { demoLocked = true; now = n }
+    var demoLocked = false   // demo mode: ignore the real player
+
     /// A player that's open, even if nothing has played since Bitsy started.
     var runningPlayer: String? {
         if let n = now { return n.app }
@@ -46,6 +50,7 @@ final class MediaMonitor {
     }
 
     private func handle(_ app: String, _ info: [AnyHashable: Any]?) {
+        if demoLocked { return }
         let state = info?["Player State"] as? String ?? ""
         if state == "Stopped" { if now?.app == app { now = nil }; return }
         let playing = state == "Playing"
@@ -61,6 +66,7 @@ final class MediaMonitor {
 
     /// Ask the player directly (used when the popup opens and nothing has been announced yet).
     func query() {
+        if demoLocked { return }
         guard let app = runningPlayer else { return }
         let src = """
         tell application "\(app)"
@@ -86,6 +92,7 @@ final class MediaMonitor {
         guard key != artworkKey else { return }
         artworkKey = key
         artwork = nil
+        if demoLocked { return }   // a made-up demo track has no cover; never show the real one
         let src = n.app == "Spotify"
             ? "tell application \"Spotify\" to return artwork url of current track"
             : "tell application \"Music\" to return data of artwork 1 of current track"

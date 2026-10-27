@@ -62,7 +62,11 @@ final class BubbleController {
         panel.contentView = host
     }
 
-    func show(_ title: String, _ detail: String, seconds: Double) {
+    /// What a click on the bubble does this time (nil: the default, which brings Claude forward).
+    private(set) var action: (() -> Void)?
+
+    func show(_ title: String, _ detail: String, seconds: Double, action: (() -> Void)? = nil) {
+        self.action = action
         model.title = title
         model.detail = detail
         panel.setContentSize(host.fittingSize)

@@ -54,8 +54,16 @@ final class Pet {
     lazy var island = IslandController(stats: stats.model)
     let fanCtl = FanController()
     let bubble = BubbleController()
+    let bridge = BridgeServer()
+    let ropePanel = RopePanel()
+    var rope: Rope?                                      // lowered on a rope to look at a window for Claude
+    var perchNotch: CGRect?                              // the notch (or menu-bar spot) Bitsy is docked in
+    var spotErrorsOn = true
+    var errorCheckBusy = false, errorAcc = 0.0
+    var seenErrors = Set<String>(), errorPIDs = Set<pid_t>()
+    let confirm = ConfirmController()
 
-    enum Mode { case ground, fall, leap, drag, perch, cling }
+    enum Mode { case ground, fall, leap, drag, perch, cling, rope }
     var mode: Mode = .fall
     var x = 0.0, y = 0.0, vx = 0.0, vy = 0.0, dir = 1   // feet point, global CG coords
     var anim: Anim = .fall, t = 0.0, dur = 99.0
@@ -67,6 +75,7 @@ final class Pet {
     var pendingWindow: Int?                              // a window you clicked; go there once back on the ground
     var followClicks = true
     private var lastActiveID: Int?
+    private var candidateID: Int?, candidateSince = 0.0   // the selected window, and since when
     var leapFrom = CGPoint.zero, leapTo = CGPoint.zero, leapT = 1.0, leapH = 80.0, leapID: Int?
     var shove = (x: 0.0, y: 0.0)                         // recent movement of the window under Bitsy
     var fellOff: Int?                                    // window Bitsy just lost balance on: fall past it
@@ -80,14 +89,16 @@ final class Pet {
     var islandNote: (text: String, at: Date)?           // short message for the island, e.g. "Sent to Claude"
     var autoPerched = false                              // went into the island because an app went full screen
     private var islandPressed = false
-    private var notchLevel = 0                           // while dragging: 1 near the notch, 2 touching it
+    var notchLevel = 0                                   // while dragging: 1 near the notch, 2 touching it
+    var demoCarry: (from: CGPoint, to: CGPoint, start: Double, dur: Double)?   // demo mode: carried along a path
     private var pendingClick: DispatchWorkItem?
     private var doubleClicked = false
     private var stayOut = false                          // pulled out of the island during this full-screen session
     var sleepStart = 23, sleepEnd = 7                    // sleeping hours; sleepStart < 0 turns them off
     var ide: String?
 
-    private var downAt: NSPoint?, dragging = false
+    private var downAt: NSPoint?
+    var dragging = false
     private var mediaAcc = 0.0
     private var permAcc = 5.0
     private var last = CACurrentMediaTime(), refreshAcc = 0.0, trackAcc = 0.0, statsAcc = 0.0, saveAcc = 0.0
@@ -135,9 +146,13 @@ final class Pet {
         }
         island.model.onDoubleTap = { [weak self] in self?.shareWindow() }
         bubble.model.onClick = { [weak self] in
-            NSRunningApplication.runningApplications(withBundleIdentifier: "com.anthropic.claudefordesktop").first?.activate()
-            self?.bubble.hide()
+            guard let self else { return }
+            if let a = self.bubble.action { a() }
+            else { NSRunningApplication.runningApplications(withBundleIdentifier: "com.anthropic.claudefordesktop").first?.activate() }
+            self.bubble.hide()
         }
+        bridge.pet = self
+        bridge.start()
         fanCtl.start()
         claude.start()
         world.refresh()
@@ -148,6 +163,7 @@ final class Pet {
         }
         panel.orderFrontRegardless()
         setRate(60)
+        if ProcessInfo.processInfo.environment["BITSY_DEMO"] != nil { runDemo() }
     }
 
     /// 60 fps while moving, 30 when standing still (sprite frames never change faster than 14 fps).
@@ -189,6 +205,8 @@ final class Pet {
         refreshAcc += dt
         trackAcc += dt
         if refreshAcc > 0.5 { refreshAcc = 0; trackAcc = 0; world.refresh(); ide = frontmostIDE(); noticeClick() }
+        errorAcc += dt
+        if errorAcc > 5 { errorAcc = 0; if spotErrorsOn && ide != nil { spotErrors() } }
         else if trackAcc > 1.0 / 15, let id = (mode == .ground ? supportID : mode == .cling ? clingID : nil), id >= 0 { trackAcc = 0; world.track(id) }
         t += dt
         reactToClaude()
@@ -197,20 +215,24 @@ final class Pet {
         if mediaAcc > 30 { mediaAcc = 0; if media.now == nil { media.query() } }   // a player is open but hasn't said what it's doing
 
         switch mode {
+        case .drag where demoCarry != nil:
+            demoCarryStep()
         case .drag:
             // follow the cursor directly (the drag may have started in the island, which hides itself)
             let p = world.toCG(NSEvent.mouseLocation)
             x = p.x
             y = p.y + Pet.foot - 9 * Double(Pet.S)
-            if let n = world.notchRect() {
-                let c = world.toCG(NSEvent.mouseLocation)
+            let c = world.toCG(NSEvent.mouseLocation)
+            if let n = world.notchRect(near: c) {
                 let gap = hypot(max(Double(n.minX) - c.x, 0, c.x - Double(n.maxX)), max(c.y - Double(n.maxY), 0))
                 notchLevel = Pet.snapZone(n).contains(c) ? 2 : gap < 150 ? 1 : 0
                 island.preview(notchLevel, notch: n, world: world)
             }
             if NSEvent.pressedMouseButtons & 1 == 0 { islandPressed = false; mouseUp() }
         case .perch:
-            if let n = world.notchRect() { x = Double(n.midX); y = Double(n.maxY) + 69 } else { leaveIsland(); startFall() }
+            if let n = perchNotch { x = Double(n.midX); y = Double(n.maxY) + 69 } else { leaveIsland(); startFall() }
+        case .rope:
+            ropeStep()
         case .cling:
             followCling()
         case .fall:
@@ -516,21 +538,22 @@ final class Pet {
         go(.leap, 99)
     }
 
-    // MARK: windows you click
+    // MARK: the window you're using
 
-    /// You clicked into a window: go there. The check runs right after each world refresh, so a focus
-    /// change counts as a click when the mouse went down in the last moment (⌘-Tab doesn't move Bitsy).
+    /// You selected a window (a click, ⌘-Tab, the Dock, Mission Control, a new app): go there, on any display.
+    /// It has to stay selected for a moment first, so a popup or notification that grabs focus doesn't send Bitsy off.
     func noticeClick() {
         let id = world.activeID
-        defer { lastActiveID = id }
+        if id != candidateID { candidateID = id; candidateSince = CACurrentMediaTime(); return }
         guard followClicks, !paused, !dragging, let id, id != lastActiveID,
-              CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .leftMouseDown) < 1.5 else { return }
+              CACurrentMediaTime() - candidateSince > 0.45 else { return }
+        lastActiveID = id
         if (mode == .ground && supportID == id) || (mode == .cling && clingID == id) { return }
         switch mode {
         case .ground where ![.crouch, .teeter, .land].contains(anim): goToWindow(id)
         case .cling: pendingWindow = id; letGo()                 // drop off this one, head over after landing
         case .ground, .fall, .leap: pendingWindow = id
-        case .drag, .perch: break
+        case .drag, .perch, .rope: break                                // docked in the notch: it stays there
         }
     }
 
@@ -622,8 +645,8 @@ final class Pet {
             // dropped near the notch: grab on and hang there
             let cursor = world.toCG(NSEvent.mouseLocation)
             notchLevel = 0
-            if let n = world.notchRect() {
-                if Pet.snapZone(n).contains(cursor) { enterIsland(auto: false); return }   // only when the cursor touches the notch
+            if let n = world.notchRect(near: cursor) {
+                if Pet.snapZone(n).contains(cursor) { enterIsland(auto: false, notch: n); return }   // only when the cursor touches the notch
                 island.preview(0, notch: n, world: world)
             }
             droppedByUser = true
@@ -659,6 +682,7 @@ final class Pet {
             if anim == .idle { f.pose.look = abs(ddx) < 40 ? 0 : (ddx > 0 ? 1 : -1); f.pose.dy = 0 }
             f.pose.lookY = ddy > 60 ? 1 : (ddy < -60 ? -1 : 0)
         }
+        if mode == .rope { ropeDecorate(&f) }
         f.pose.headphones = media.isPlaying
         if mode == .drag && notchLevel == 2 {   // about to dock: excited
             f.pose.eyes = .happy; f.pose.mouth = .smile; f.pose.armL = .up2; f.pose.armR = .up2
@@ -682,7 +706,7 @@ final class Pet {
 
         if mode == .perch { bubble.hide() } else { bubble.follow(head: CGPoint(x: x, y: y - 50), world: world) }
         if stats.isOpen {
-            if mode == .perch, let n = world.notchRect() { stats.place(head: CGPoint(x: n.midX, y: n.maxY - 48), world: world) }
+            if mode == .perch, let n = perchNotch { stats.place(head: CGPoint(x: n.midX, y: n.maxY - 48), world: world) }
             else { stats.place(head: CGPoint(x: x, y: y - 48), world: world) }
         }
     }
@@ -710,8 +734,9 @@ final class Pet {
     /// The notch itself plus a few points around it.
     static func snapZone(_ n: CGRect) -> CGRect { CGRect(x: n.minX - 8, y: n.minY - 20, width: n.width + 16, height: n.height + 28) }
 
-    func enterIsland(auto: Bool) {
-        guard let n = world.notchRect() else { return }
+    func enterIsland(auto: Bool, notch: CGRect? = nil) {
+        guard let n = notch ?? world.notchRect() else { return }
+        perchNotch = n
         mode = .perch; vx = 0; vy = 0; supportID = nil; walkTarget = nil; pendingHop = nil
         autoPerched = auto
         go(.hang, 99)

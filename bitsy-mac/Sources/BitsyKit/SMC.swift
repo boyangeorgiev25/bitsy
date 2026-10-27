@@ -134,39 +134,8 @@ public enum FanHelper {
 
     public static var installed: Bool { FileManager.default.fileExists(atPath: plistPath) }
 
-    public static func send(_ line: String) -> String? {
-        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard fd >= 0 else { return nil }
-        defer { close(fd) }
-        var one: Int32 = 1
-        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout<Int32>.size))
-        var tv = timeval(tv_sec: 2, tv_usec: 0)
-        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
-        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
-        guard connectUnix(fd, socketPath) else { return nil }
-        let msg = Array((line + "\n").utf8)
-        guard write(fd, msg, msg.count) == msg.count else { return nil }
-        var out = [UInt8](), buf = [UInt8](repeating: 0, count: 4096)
-        while out.last != 0x0A {
-            let n = read(fd, &buf, buf.count)
-            if n <= 0 { break }
-            out += buf[0..<n]
-        }
-        return String(bytes: out, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
+    public static func send(_ line: String) -> String? { Unix.request(socketPath, line, timeout: 2) }
 
-    public static func sockaddr(_ path: String) -> sockaddr_un {
-        var addr = sockaddr_un()
-        addr.sun_family = sa_family_t(AF_UNIX)
-        let bytes = Array(path.utf8)
-        withUnsafeMutableBytes(of: &addr.sun_path) { p in for i in 0..<min(bytes.count, p.count - 1) { p[i] = bytes[i] } }
-        return addr
-    }
+    public static func sockaddr(_ path: String) -> sockaddr_un { Unix.sockaddr(path) }
 
-    private static func connectUnix(_ fd: Int32, _ path: String) -> Bool {
-        var addr = sockaddr(path)
-        return withUnsafePointer(to: &addr) {
-            $0.withMemoryRebound(to: Darwin.sockaddr.self, capacity: 1) { connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
-        } == 0
-    }
 }

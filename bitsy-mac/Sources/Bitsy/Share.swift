@@ -20,7 +20,9 @@ extension Pet {
 
     func shareWindow() {
         let m = stats.model
-        guard let id = shareableWindow else { say("No window", "Put \(name) on a window first."); return }
+        // the window Bitsy is on or you're using; with no window at all, the whole screen Bitsy is on
+        let id = shareableWindow
+        let display = (NSScreen.screens.firstIndex { world.toCG($0.frame).contains(CGPoint(x: x, y: y - 40)) } ?? 0) + 1
         guard CGPreflightScreenCaptureAccess() else {
             // First time: macOS shows its own prompt. After that, open the right Settings pane.
             if !CGRequestScreenCaptureAccess(),
@@ -34,7 +36,8 @@ extension Pet {
         DispatchQueue.global(qos: .userInitiated).async {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-            p.arguments = ["-x", "-o", "-c", "-l", "\(id)"]   // window only, no shadow, to the clipboard
+            p.arguments = id.map { ["-x", "-o", "-c", "-l", "\($0)"] }   // window only, no shadow, to the clipboard
+                ?? ["-x", "-c", "-D", "\(display)"]
             try? p.run()
             p.waitUntilExit()
             DispatchQueue.main.async { self.pasteIntoChat(ok: p.terminationStatus == 0) }
@@ -42,7 +45,7 @@ extension Pet {
     }
 
     private func pasteIntoChat(ok: Bool) {
-        guard ok else { say("Couldn't capture", "That window couldn't be captured."); return }
+        guard ok else { say("Couldn't capture", "That screen couldn't be captured."); return }
         // the chat: the Claude app if it's open, otherwise whatever you were using
         let target = NSRunningApplication.runningApplications(withBundleIdentifier: "com.anthropic.claudefordesktop").first
             ?? NSWorkspace.shared.frontmostApplication

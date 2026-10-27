@@ -152,16 +152,22 @@ final class World {
         return CGRect(origin: p, size: sz)
     }
 
-    /// The MacBook notch in CG coords, if a screen has one.
-    func notchRect() -> CGRect? {
-        for scr in NSScreen.screens where scr.safeAreaInsets.top > 0 {
-            let f = toCG(scr.frame)
+    /// Where the Dynamic Island docks, in CG coords: the real notch on a MacBook screen, or on a display without one
+    /// a notch-sized spot hanging from the middle of the menu bar. `near`: the screen under that point; without it,
+    /// the screen with a notch, else the main one.
+    func notchRect(near p: CGPoint? = nil) -> CGRect? {
+        let screens = NSScreen.screens
+        let scr = p.flatMap { pt in screens.first { toCG($0.frame).contains(pt) } }
+            ?? screens.first { $0.safeAreaInsets.top > 0 } ?? screens.first
+        guard let scr else { return nil }
+        let f = toCG(scr.frame)
+        if scr.safeAreaInsets.top > 0 {
             let lw = scr.auxiliaryTopLeftArea?.width ?? 0, rw = scr.auxiliaryTopRightArea?.width ?? 0
             let w = f.width - lw - rw
-            guard w > 0, w < f.width / 2 else { continue }
-            return CGRect(x: f.minX + lw, y: f.minY, width: w, height: scr.safeAreaInsets.top)
+            if w > 0, w < f.width / 2 { return CGRect(x: f.minX + lw, y: f.minY, width: w, height: scr.safeAreaInsets.top) }
         }
-        return nil
+        let menuBottom = toCG(scr.visibleFrame).minY   // no notch: hang from the menu bar
+        return CGRect(x: f.midX - 100, y: menuBottom, width: 200, height: 30)
     }
 
     /// Cheap single-window update so Bitsy can ride a window you're dragging between full refreshes.

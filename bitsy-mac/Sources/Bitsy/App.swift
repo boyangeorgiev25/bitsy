@@ -57,10 +57,13 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.removeAllItems()
         add(menu, pet.stats.isOpen ? "Hide Status" : "Show Status", #selector(toggleStats))
         add(menu, "Send Window to Claude", #selector(share))
+        add(menu, "Ask Claude\u{2026}", #selector(ask))
         menu.addItem(.separator())
         add(menu, "Walk on Windows", #selector(toggleWindows)).state = pet.world.includeWindows ? .on : .off
         add(menu, "Watch Me Type", #selector(toggleWatch)).state = pet.watchTyping ? .on : .off
-        add(menu, "Follow My Clicks", #selector(toggleFollow)).state = pet.followClicks ? .on : .off
+        add(menu, "Follow the Window I\u{2019}m Using", #selector(toggleFollow)).state = pet.followClicks ? .on : .off
+        add(menu, "Spot Errors", #selector(toggleSpot)).state = pet.spotErrorsOn ? .on : .off
+        if !ClickTrust.apps.isEmpty { add(menu, "Ask Before Every Click Again", #selector(resetClicks)) }
         add(menu, "Stay Put", #selector(togglePause)).state = pet.paused ? .on : .off
         let hours = NSMenuItem(title: "Sleeping Hours", action: nil, keyEquivalent: "")
         let hsub = NSMenu()
@@ -116,6 +119,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
     @objc func toggleStats() { pet.syncStats(); pet.stats.toggle() }
     @objc func share() { pet.shareWindow() }
+    @objc func ask() { pet.askClaude() }
+    @objc func toggleSpot() { pet.spotErrorsOn.toggle(); pet.save() }
+    @objc func resetClicks() { ClickTrust.reset() }
     @objc func setFanMode(_ sender: NSMenuItem) {
         if let raw = sender.representedObject as? String, let m = FanController.Mode(rawValue: raw) { pet.fanCtl.mode = m }
     }
