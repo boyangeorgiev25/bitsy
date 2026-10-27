@@ -7,6 +7,10 @@
 <p align="center">A tiny pixel pet that lives on your Mac and keeps an eye on Claude Code for you.</p>
 
 <p align="center">
+  <a href="https://github.com/boyangeorgiev25/bitsy/releases/latest/download/Bitsy.dmg"><img src="https://img.shields.io/badge/Download_for_Mac-Bitsy.dmg-D97757?style=for-the-badge&logo=apple&logoColor=white" alt="Download Bitsy for Mac"></a>
+</p>
+
+<p align="center">
   <img src="docs/images/moods.png" alt="Bitsy's moods: idle, walk, coding, Claude done, music, bedtime, up late, losing balance">
 </p>
 
@@ -22,7 +26,13 @@
 
 ## Install
 
-Needs macOS 13+ and Xcode.
+1. [Download **Bitsy.dmg**](https://github.com/boyangeorgiev25/bitsy/releases/latest/download/Bitsy.dmg), open it, and drag **Bitsy** into **Applications**.
+2. Open Bitsy. macOS says it can't verify the app: click **Done**.
+3. Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Bitsy.
+
+You only do step 3 once. Bitsy then lives in your menu bar. Needs macOS 13+, Apple Silicon or Intel.
+
+**Build it yourself** (needs Xcode):
 
 ```bash
 git clone https://github.com/boyangeorgiev25/bitsy.git
@@ -30,7 +40,7 @@ cd bitsy/bitsy-mac && ./build.sh
 cp -R build/Bitsy.app /Applications/ && open /Applications/Bitsy.app
 ```
 
-Bitsy lives in your menu bar. For Claude usage numbers, permissions, fan control and more, see the [guide](docs/GUIDE.md).
+For Claude usage numbers, permissions, fan control and more, see the [guide](docs/GUIDE.md).
 
 ---
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds a notarized, double-clickable dist/Bitsy-<version>.dmg.
+# Builds a notarized, double-clickable dist/Bitsy.dmg.
 #
 # Needs, once:
 #   1. A "Developer ID Application" certificate (Xcode › Settings › Accounts › Manage Certificates › +).
@@ -7,13 +7,14 @@
 #        xcrun notarytool store-credentials bitsy-notary --apple-id <you@example.com> --team-id <TEAMID>
 #      (it asks for an app-specific password from account.apple.com)
 #
-# DRY_RUN=1 ./release.sh  signs with whatever certificate you have and skips notarization (for testing).
+# NOTARIZE=0 ./release.sh  signs with whatever certificate you have and skips notarization. People who
+# download that build have to click Open Anyway (System Settings › Privacy & Security) the first time.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Info.plist)
 PROFILE=${NOTARY_PROFILE:-bitsy-notary}
-if [ "${DRY_RUN:-}" = 1 ]; then
+if [ "${NOTARIZE:-1}" = 0 ]; then
     ID=$(security find-identity -v -p codesigning | awk '/Developer ID Application|Apple Development/ {print $2; exit}')
 else
     ID=$(security find-identity -v -p codesigning | awk '/Developer ID Application/ {print $2; exit}')
@@ -24,7 +25,7 @@ fi
 APP=build/Bitsy.app
 
 # Re-sign everything with the hardened runtime and a secure timestamp (both required by notarization).
-TS=--timestamp; [ "${DRY_RUN:-}" = 1 ] && TS=--timestamp=none
+TS=--timestamp; [ "${NOTARIZE:-1}" = 0 ] && TS=--timestamp=none
 for exe in bitsy-mcp bitsy-fand bitsy-statusline; do
     codesign --force $TS --options runtime -s "$ID" -i "io.bitsy.pet.$exe" "$APP/Contents/MacOS/$exe"
 done
@@ -33,7 +34,7 @@ codesign --verify --strict --deep "$APP"
 
 # Disk image with a shortcut to /Applications to drag onto.
 mkdir -p dist
-DMG="dist/Bitsy-$VERSION.dmg"
+DMG="dist/Bitsy.dmg"   # stable name, so releases/latest/download/Bitsy.dmg always works
 STAGE=$(mktemp -d)
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
@@ -42,7 +43,7 @@ hdiutil create -quiet -volname "Bitsy $VERSION" -srcfolder "$STAGE" -ov -format 
 rm -rf "$STAGE"
 codesign --force $TS -s "$ID" "$DMG"
 
-if [ "${DRY_RUN:-}" = 1 ]; then echo "Dry run: built $DMG (not notarized)"; exit 0; fi
+if [ "${NOTARIZE:-1}" = 0 ]; then echo "Built $DMG (not notarized)"; exit 0; fi
 
 xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait
 xcrun stapler staple "$DMG"
