@@ -1,15 +1,17 @@
 #!/bin/bash
-# Builds build/Bitsy.app (release, ad-hoc signed).
+# Builds build/Bitsy.app: release, universal (Apple Silicon + Intel), signed.
 set -euo pipefail
 cd "$(dirname "$0")"
-swift build -c release
+# Universal binary: runs on Apple Silicon and Intel Macs.
+swift build -c release --arch arm64 --arch x86_64
+BIN=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)
 APP=build/Bitsy.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/release/Bitsy "$APP/Contents/MacOS/Bitsy"
-cp .build/release/bitsy-mcp "$APP/Contents/MacOS/bitsy-mcp"
-cp .build/release/bitsy-fand "$APP/Contents/MacOS/bitsy-fand"
-cp .build/release/bitsy-statusline "$APP/Contents/MacOS/bitsy-statusline"
+cp "$BIN"/Bitsy "$APP/Contents/MacOS/Bitsy"
+cp "$BIN"/bitsy-mcp "$APP/Contents/MacOS/bitsy-mcp"
+cp "$BIN"/bitsy-fand "$APP/Contents/MacOS/bitsy-fand"
+cp "$BIN"/bitsy-statusline "$APP/Contents/MacOS/bitsy-statusline"
 cp Info.plist "$APP/Contents/Info.plist"
 [ -f AppIcon.icns ] && cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 # Sign with your Apple Development certificate when there is one: a stable identity means macOS keeps
