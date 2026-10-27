@@ -32,15 +32,16 @@ done
 codesign --force $TS --options runtime --entitlements Bitsy.entitlements -s "$ID" "$APP"
 codesign --verify --strict --deep "$APP"
 
-# Disk image with a shortcut to /Applications to drag onto.
+# Disk image: a styled window (dmg/) with Bitsy, an arrow and a shortcut to /Applications.
 mkdir -p dist
 DMG="dist/Bitsy.dmg"   # stable name, so releases/latest/download/Bitsy.dmg always works
-STAGE=$(mktemp -d)
-cp -R "$APP" "$STAGE/"
-ln -s /Applications "$STAGE/Applications"
+VENV=.build/dmg-venv
+[ -x "$VENV/bin/dmgbuild" ] || { python3 -m venv "$VENV" && "$VENV/bin/pip" install -q dmgbuild==1.6.5; }
+if [ ! -f dmg/background.png ]; then (cd dmg && swift background.swift .); fi
+tiffutil -cathidpicheck dmg/background.png dmg/background@2x.png -out .build/dmg-background.tiff >/dev/null 2>&1
 rm -f "$DMG"
-hdiutil create -quiet -volname "Bitsy $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
-rm -rf "$STAGE"
+"$VENV/bin/dmgbuild" -s dmg/settings.py -D app="$APP" -D background=.build/dmg-background.tiff -D volicon=AppIcon.icns \
+    "Bitsy" "$DMG" >/dev/null
 codesign --force $TS -s "$ID" "$DMG"
 
 if [ "${NOTARIZE:-1}" = 0 ]; then echo "Built $DMG (not notarized)"; exit 0; fi
